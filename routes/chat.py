@@ -8,6 +8,7 @@ from typing import Optional
 import time
 from datetime import datetime
 import random
+import re
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -58,6 +59,9 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         
         user_data = user_response.data[0]
         
+        # Get current points (default to 0 if not set)
+        current_points = user_data.get("points", 0) or 0
+        
         # Increment conversation count
         conversation_counts[uuid] += 1
         current_count = conversation_counts[uuid]
@@ -69,7 +73,8 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         conversation_history[uuid].append({"role": "user", "content": message})
         
         # Check if we should analyze emotion and assign an animal type
-        if current_count >= MAX_EXCHANGES:
+        animal_to_return = None
+        if current_count == MAX_EXCHANGES:  # Changed from >= to == to only send animal once
             # Log that we're doing animal assignment
             logger.info(f"Performing animal assignment for user {uuid} after {current_count} messages")
             
@@ -114,13 +119,47 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                     detected_emotion = "neutral"
                     detected_animal = "dog"
                 
-                # Update user with assigned animal and emotion
+                # Generate therapeutic response and points in the new format
+                from config.openai_config import SCORING_PROMPT
+                chat_response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        lambda: get_ai_response(
+                            message=message,
+                            character_type=detected_animal,
+                            current_mood=detected_emotion
+                        )
+                    ),
+                    timeout=5.0
+                )
+                
+                # Try to extract points from the response
+                points = 2  # Default
+                points_match = re.search(r'points:\s*(\d+)', chat_response, re.IGNORECASE)
+                if points_match:
+                    points = int(points_match.group(1))
+                    points = max(0, min(points, 5))  # Ensure within valid range
+                
+                # Extract the actual response (everything before "points:")
+                response_text = chat_response
+                response_parts = chat_response.split("points:", 1)
+                if len(response_parts) > 1:
+                    response_text = response_parts[0].strip()
+                
+                # If the response starts with "gpt:", remove it
+                if response_text.lower().startswith("gpt:"):
+                    response_text = response_text[4:].strip()
+                
+                # Update total points for the user
+                new_points = current_points + points
+                
+                # Update user with assigned animal, emotion, and points
                 await asyncio.wait_for(
                     asyncio.to_thread(
                         lambda: supabase.table("User")
                                      .update({
                                          "animal_type": detected_animal,
-                                         "animal_emotion": detected_emotion
+                                         "animal_emotion": detected_emotion,
+                                         "points": new_points
                                      })
                                      .eq("uuid", uuid)
                                      .execute()
@@ -128,15 +167,37 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                     timeout=3.0
                 )
                 
-                # Reset conversation count and history after assignment
-                conversation_counts[uuid] = 0
+                # Reset conversation history but don't reset the counter - we want to continue counting
                 conversation_history[uuid] = []
                 
-                # Return special animal assignment message
+                # Store the AI response in conversation history
+                conversation_history[uuid].append({"role": "assistant", "content": response_text})
+                
+                # Save chat message to Chat table
+                try:
+                    chat_data = {
+                        "uuid": uuid,
+                        "user_input": message,
+                        "chat_output": response_text,
+                        "points": points
+                    }
+                    
+                    await asyncio.wait_for(
+                        asyncio.to_thread(
+                            lambda: supabase.table("Chat").insert(chat_data).execute()
+                        ),
+                        timeout=3.0
+                    )
+                except Exception as chat_error:
+                    logger.error(f"Error saving chat: {str(chat_error)}")
+                    # Continue even if saving fails
+                
+                # Return special animal assignment message with points
                 return ChatResponse(
-                    response=f"I've been thinking about our conversation. You seem to be feeling {detected_emotion}, and I think you're a lot like a {detected_animal}! *excited*",
+                    response=response_text,
                     emotion=detected_emotion,
-                    animal=detected_animal
+                    animal=detected_animal,
+                    points=points
                 )
                 
             except asyncio.TimeoutError:
@@ -144,8 +205,8 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         
         # Regular conversation flow
         try:
-            # Regular response
-            ai_response = await asyncio.wait_for(
+            # Get response and points in a single call
+            combined_response = await asyncio.wait_for(
                 asyncio.to_thread(
                     lambda: get_ai_response(
                         message=message,
@@ -156,18 +217,64 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                 timeout=5.0
             )
             
+            # Try to extract points from the response
+            points = 2  # Default
+            points_match = re.search(r'points:\s*(\d+)', combined_response, re.IGNORECASE)
+            if points_match:
+                points = int(points_match.group(1))
+                points = max(0, min(points, 5))  # Ensure within valid range
+            
+            # Extract the actual response (everything before "points:")
+            ai_response = combined_response
+            response_parts = combined_response.split("points:", 1)
+            if len(response_parts) > 1:
+                ai_response = response_parts[0].strip()
+            
+            # If the response starts with "gpt:", remove it
+            if ai_response.lower().startswith("gpt:"):
+                ai_response = ai_response[4:].strip()
+                
+            # Update total points for the user
+            new_points = current_points + points
+            logger.info(f"Awarding {points} points to user {uuid}. New total: {new_points}")
+            
             # Store the AI response in conversation history
             conversation_history[uuid].append({"role": "assistant", "content": ai_response})
             
         except asyncio.TimeoutError:
             raise HTTPException(status_code=504, detail="AI service timeout")
+        
+        # Update user's points and emotion in Supabase
+        try:
+            # Only update the emotion after animal assignment (animal_type is not None)
+            update_data = {"points": new_points}
             
+            # If the animal has been assigned, also update the emotion
+            if user_data["animal_type"] is not None:
+                # For simplicity, we'll keep using the existing emotion
+                # In a real app, you might analyze the user's message to determine a new emotion
+                update_data["animal_emotion"] = user_data["animal_emotion"]
+            
+            await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: supabase.table("User")
+                                 .update(update_data)
+                                 .eq("uuid", uuid)
+                                 .execute()
+                ),
+                timeout=3.0
+            )
+        except Exception as update_error:
+            logger.error(f"Error updating user points: {str(update_error)}")
+            # Continue even if the update fails
+        
         # Save chat message to Chat table
         try:
             chat_data = {
                 "uuid": uuid,
                 "user_input": message,
-                "chat_output": ai_response
+                "chat_output": ai_response,
+                "points": points
             }
             
             try:
@@ -185,9 +292,11 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
             # Don't fail the request if saving fails
             pass
         
-        # Regular chat response without emotion and animal (they will be None by default)
+        # Return chat response with points and emotion (if animal has been assigned)
         return ChatResponse(
-            response=ai_response
+            response=ai_response,
+            emotion=user_data["animal_emotion"] if user_data["animal_type"] is not None else None,
+            points=points
         )
             
     except HTTPException as he:

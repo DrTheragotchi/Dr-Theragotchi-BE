@@ -33,6 +33,7 @@ async def create_user(request: OnboardingRequest):
                 animal_type=user_data["animal_type"],
                 animal_emotion=user_data["animal_emotion"],
                 animal_level=user_data["animal_level"],
+                points=user_data.get("points", 0),
                 is_notified=user_data["is_notified"],
                 created_at=user_data.get("created_at")
             )
@@ -44,6 +45,7 @@ async def create_user(request: OnboardingRequest):
             "animal_type": None,
             "animal_emotion": None,
             "animal_level": 1,
+            "points": 0,
             "is_notified": False
         }
         supabase.table("User").insert(data).execute()
@@ -77,7 +79,8 @@ async def assign_character(
             return EmotionSelectionResponse(
                 animal_type=animal_type,
                 animal_emotion=emotion,
-                animal_level=1
+                animal_level=1,
+                points=user_response.data[0].get("points", 0)
             )
         else:
             data = {
@@ -103,6 +106,7 @@ async def get_user(uuid: str):
             animal_type=user_data["animal_type"],
             animal_emotion=user_data["animal_emotion"],
             animal_level=user_data["animal_level"],
+            points=user_data.get("points", 0),
             is_notified=user_data["is_notified"],
             created_at=user_data.get("created_at")
         )
@@ -142,7 +146,7 @@ async def delete_user(uuid: str):
         supabase.table("User").delete().eq("uuid", uuid).execute()
         
         # Delete associated chat messages
-        supabase.table("Chat").delete().eq("user_uuid", uuid).execute()
+        supabase.table("Chat").delete().eq("uuid", uuid).execute()
         
         return {"message": "User deleted successfully"}
             

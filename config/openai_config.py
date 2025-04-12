@@ -22,6 +22,23 @@ DEFAULT_PROMPT = """I want to use you as my therapist right now. From this point
 And based on the message saying "Why are you feeling {emotion}?" the user said "{message}".
 Use this information to guide your responses, but don't mention what I just explained—just act like the therapist right away. And says like a human don't be repetitive."""
 
+# Scoring prompt for determining points
+SCORING_PROMPT = """User response: "{message}".
+
+Admin instruction:
+Based on the user's response, generate your own therapeutic reply. Then, evaluate the user's emotional state on a scale from 0 to 5, where 0 indicates complete emotional distress and 5 indicates emotional stability.
+
+0 = inappropriate or harmful content
+1 = very short/low effort response
+2 = basic response
+3 = thoughtful response
+4 = detailed, insightful response
+5 = exceptional, vulnerable, or highly meaningful response
+
+Consider factors like emotional depth, vulnerability, thoughtfulness, and engagement.
+
+Format your output as follows: gpt: {your_response} points: {int}"""
+
 def get_ai_response(
     message: str, 
     character_type: Optional[str] = None, 

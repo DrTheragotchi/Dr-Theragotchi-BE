@@ -47,6 +47,7 @@ async def create_user(request: OnboardingRequest):
             "animal_type": None,  # Will be set when character is assigned
             "animal_emotion": None,    # Will be set when character is assigned
             "animal_level": 1,             # Start at level 1
+            "points": 0,                # Initialize points to 0
             "is_notified": False     # Initialize to False
         }
         

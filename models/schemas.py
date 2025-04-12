@@ -26,6 +26,7 @@ class EmotionSelectionResponse(BaseModel):
     animal_type: CharacterType
     animal_emotion: EmotionType
     animal_level: int
+    points: Optional[int] = 0
 
 class ChatRequest(BaseModel):
     message: str
@@ -35,6 +36,7 @@ class ChatResponse(BaseModel):
     response: str
     emotion: Optional[EmotionType] = None
     animal: Optional[CharacterType] = None
+    points: Optional[int] = None
 
 class EmotionUpdateResponse(BaseModel):
     success: bool
@@ -46,5 +48,6 @@ class UserResponse(BaseModel):
     animal_type: Optional[CharacterType] = None
     animal_emotion: Optional[EmotionType] = None
     animal_level: int
+    points: Optional[int] = 0
     is_notified: bool
     created_at: Optional[datetime] = None 
