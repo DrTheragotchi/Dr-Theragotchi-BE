@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from models.schemas import UserResponse
 from db import supabase
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 

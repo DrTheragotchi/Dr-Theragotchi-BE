@@ -28,6 +28,17 @@ uvicorn main:app --reload
 The API will be available at `http://localhost:8000`
 API documentation is available at `http://localhost:8000/docs`
 
+## Flutter Integration
+
+The backend is configured to work seamlessly with Flutter mobile applications:
+
+- Full CORS support is enabled for all origins (temporarily)
+- All API responses are returned as clean JSON
+- Explicit HTTP methods are allowed (GET, POST, PUT, DELETE, OPTIONS, PATCH)
+- Preflight requests are cached for 10 minutes to improve performance
+
+For production, you should restrict the `allow_origins` to only your Flutter app's domains.
+
 ## API Endpoints
 
 - `POST /onboarding`: Create a new user with character type

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from models.schemas import OnboardingRequest, OnboardingResponse
 from db import supabase
 import uuid
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
