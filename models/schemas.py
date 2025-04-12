@@ -33,6 +33,10 @@ class EmotionSelectionResponse(BaseModel):
     animal_emotion: EmotionType
     animal_level: int
 
+class ChatRequest(BaseModel):
+    message: str
+    uuid: str
+
 class ChatResponse(BaseModel):
     response: str
 
