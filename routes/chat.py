@@ -144,6 +144,7 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                 # Try to extract points from the response
                 points = 2  # Default
                 points_match = re.search(r'points:\s*(\d+)', chat_response, re.IGNORECASE)
+                logger.info(f"Points match: {points_match}")
                 if points_match:
                     points = int(points_match.group(1))
                     points = max(0, min(points, 5))  # Ensure within valid range
