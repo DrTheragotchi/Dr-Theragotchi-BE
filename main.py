@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from routes import onboarding, chat, user
+from routes import user, chat
 
 app = FastAPI(
     title="Emogotchi API",
@@ -21,9 +21,8 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(onboarding.router, tags=["onboarding"])
-app.include_router(chat.router, tags=["chat"])
 app.include_router(user.router, tags=["user"])
+app.include_router(chat.router, tags=["chat"])
 
 @app.get("/")
 async def root():

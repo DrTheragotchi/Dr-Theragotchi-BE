@@ -39,12 +39,37 @@ The backend is configured to work seamlessly with Flutter mobile applications:
 
 For production, you should restrict the `allow_origins` to only your Flutter app's domains.
 
+## User Flow
+
+The application follows this user flow:
+
+1. User enters their nickname (POST /user with action=create)
+2. User selects their emotion (POST /user with action=update_emotion)
+3. System assigns a character based on the emotion
+4. User can chat with their character (POST /chat)
+5. User can update their emotion (POST /user with action=update_emotion)
+
 ## API Endpoints
 
-- `POST /onboarding`: Create a new user with character type
-- `POST /chat`: Send a message and get LLM response
-- `GET /user/{uuid}`: Get user information
-- `DELETE /user/{uuid}`: Delete a user
+### User Management
+- **POST /user**
+  - Query Parameters:
+    - `action` (string, required): Action to perform (create, update_emotion, get)
+    - `nickname` (string, required for create): User's nickname
+    - `emotion` (string, required for update_emotion): Selected emotion (happy, sad, angry, anxious, calm, excited)
+    - `uuid` (string, required for update_emotion and get): User UUID
+  - Responses:
+    - For create: `{ "uuid": "uuid", "nickname": "string" }`
+    - For update_emotion (first time): `{ "character_type": "string", "current_mood": "string", "level": 1 }`
+    - For update_emotion (subsequent): `{ "success": true, "new_mood": "string" }`
+    - For get: `[{ "uuid": "uuid", "nickname": "string", "character_type": "string", "current_mood": "string", "level": 1, "created_at": "string" }]`
+
+### Chat
+- **POST /chat**
+  - Query Parameters:
+    - `message` (string, required): User message
+    - `user_uuid` (string, required): User UUID
+  - Response: `{ "reply": "string" }`
 
 ## Database Schema
 
@@ -52,7 +77,10 @@ The application expects the following tables in Supabase:
 
 ### users
 - uuid (primary key)
-- character_type
+- nickname (string)
+- character_type (enum: tiger, penguin, hamster, pig, dog)
+- current_mood (enum: happy, sad, angry, anxious, calm, excited)
+- level (integer)
 - created_at (timestamp with time zone)
 
 ### chats (to be implemented)
