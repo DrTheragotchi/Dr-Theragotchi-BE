@@ -3,6 +3,9 @@ import os
 from dotenv import load_dotenv
 from models.schemas import CharacterType, EmotionType
 import logging
+from openai.types.chat import ChatCompletion
+import time
+from typing import List, Dict, Optional
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -14,46 +17,86 @@ load_dotenv()
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def get_ai_response(message: str, character_type: str, current_mood: str) -> str:
+# Default therapist prompt template
+DEFAULT_PROMPT = """I want to use you as my therapist right now. From this point on, you're the counselor, and your role is to understand and heal my emotions as much as possible. The emotion I'm currently feeling is {emotion}, which is one of the following: HAPPY, SAD, ANGRY, ANXIOUS, CALM, EXCITED, SLEEPY, or NEUTRAL. 
+And based on the message saying "Why are you feeling {emotion}?" the user said "{message}".
+Use this information to guide your responses, but don't mention what I just explained—just act like the therapist right away."""
+
+def get_ai_response(
+    message: str, 
+    character_type: Optional[str] = None, 
+    current_mood: Optional[str] = None, 
+    is_animal_selection: bool = False, 
+    is_admin_analysis: bool = False,
+    conversation_history: Optional[List[Dict[str, str]]] = None,
+    admin_prompt: Optional[str] = None
+) -> str:
     """
     Get AI response based on user message and pet characteristics.
     
     Args:
-        message (str): User's message
-        character_type (str): Type of animal (e.g., "dog", "cat")
-        current_mood (str): Current mood of the pet
+        message (str): User's message or prompt
+        character_type (str, optional): Type of animal (e.g., "dog", "cat")
+        current_mood (str, optional): Current mood of the pet
+        is_animal_selection (bool): Whether this is an animal selection query
+        is_admin_analysis (bool): Whether this is an admin analysis of the conversation
+        conversation_history (List[Dict], optional): List of conversation messages for analysis
+        admin_prompt (str, optional): Admin prompt for analysis, passed from chat.py
         
     Returns:
         str: AI's response
     """
     try:
-        # Create the system prompt
-        system_prompt = f"""You are a cute {character_type} pet in a virtual pet game. 
-Your current mood is {current_mood}.
-You should respond in a way that matches your animal type and current mood.
-Keep responses short, cute, and playful (max 2-3 sentences).
-Use simple language and occasionally add animal sounds or actions.
-If you're happy, be excited and playful.
-If you're sad, be gentle and comforting.
-If you're angry, be grumpy but still cute.
-If you're sleepy, be tired but still responsive.
-If you're excited, be very energetic and bouncy.
-If you're neutral, be calm and friendly.
-Always stay in character as a {character_type}."""
+        # Admin analysis of conversation
+        if is_admin_analysis and conversation_history:
+            # Use the admin prompt passed from chat.py
+            system_prompt = admin_prompt
+            
+        # Create the system prompt based on the scenario
+        elif is_animal_selection:
+            system_prompt = """You are an animal matching expert. 
+Based on the conversation history, you need to match the user with the most suitable animal type.
+Choose from: tiger, penguin, hamster, pig, or dog.
+Respond with ONLY the animal name in lowercase, nothing else."""
+        else:
+            # For regular conversations, use the therapist prompt
+            if not current_mood:
+                current_mood = "neutral"
+                
+            if not character_type:
+                character_type = "friendly pet"
+                
+            # Substitute values into the default prompt
+            system_prompt = DEFAULT_PROMPT.format(
+                emotion=current_mood.upper(),
+                message=message
+            )
 
         # Create the messages for the API call
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": message}
-        ]
+        if is_admin_analysis and conversation_history:
+            # Include the conversation history for analysis
+            messages = [
+                {"role": "system", "content": system_prompt},
+                *conversation_history,
+                {"role": "user", "content": message}
+            ]
+        else:
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message}
+            ]
 
-        # Call OpenAI API
+        # Call OpenAI API with timeout
+        start_time = time.time()
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages,
-            max_tokens=100,
-            temperature=0.7
+            max_tokens=100 if is_admin_analysis else 50,  # More tokens for analysis
+            temperature=0.7,
+            timeout=5  # 5 second timeout
         )
+        end_time = time.time()
+        logger.info(f"OpenAI response time: {end_time - start_time:.2f} seconds")
 
         # Extract and return the response
         ai_response = response.choices[0].message.content
@@ -62,5 +105,14 @@ Always stay in character as a {character_type}."""
 
     except Exception as e:
         logger.error(f"Error getting AI response: {str(e)}")
-        # Return a fallback response if OpenAI fails
-        return f"*{character_type} sound* Hi! I'm feeling {current_mood} right now. What's up?" 
+        # Return a fallback response based on the scenario
+        if is_admin_analysis:
+            return "emotion: neutral, animal: dog"  # Default fallback analysis
+        elif is_animal_selection:
+            return "dog"  # Default fallback animal
+        else:
+            if not character_type:
+                character_type = "friendly pet"
+            if not current_mood:
+                current_mood = "neutral"
+            return f"I understand you're feeling {current_mood}. How can I help you today?" 

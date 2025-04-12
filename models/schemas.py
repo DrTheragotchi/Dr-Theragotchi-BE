@@ -10,18 +10,12 @@ class CharacterType(str, Enum):
     HAMSTER = "hamster"
     PIG = "pig"
     DOG = "dog"
-    CAT = "cat"
-    RABBIT = "rabbit"
-    BIRD = "bird"
 
 class EmotionType(str, Enum):
     HAPPY = "happy"
     SAD = "sad"
     ANGRY = "angry"
     ANXIOUS = "anxious"
-    CALM = "calm"
-    EXCITED = "excited"
-    SLEEPY = "sleepy"
     NEUTRAL = "neutral"
 
 class OnboardingResponse(BaseModel):
