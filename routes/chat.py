@@ -21,7 +21,7 @@ conversation_counts = {}
 conversation_history = {}  # Store conversation history for each user
 
 # Maximum number of exchanges before animal assignment
-MAX_EXCHANGES = 5
+MAX_EXCHANGES = 4
 
 # Admin prompt for emotion and animal type analysis
 ADMIN_PROMPT = """This is the admin. Based on the conversation you just had with the user, please identify the user's true emotion by selecting one from the following categories: HAPPY, SAD, ANGRY, ANXIOUS, or NEUTRAL. Then, choose one animal that corresponds to that emotion from the following list: tiger, penguin, hamster, pig, or dog. Please respond in the following format: emotion: {emotion}, animal: {animal}."""
@@ -31,12 +31,17 @@ ADMIN_PROMPT = """This is the admin. Based on the conversation you just had with
 async def test_endpoint():
     return {"status": "ok", "message": "Server is working!"}
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse, 
+             response_model_exclude_unset=False,  # Ensure all fields are in response
+             response_description="Chat response with therapeutic message and points")
 async def chat_with_pet(request: Request, chat_request: ChatRequest):
     try:
         # Get user UUID
         uuid = chat_request.uuid
         message = chat_request.message
+        emotion_provided = chat_request.emotion is not None
+        
+        logger.info(f"Chat request from {uuid}: message='{message}', emotion_provided={emotion_provided}")
         
         # Initialize conversation count if it doesn't exist
         if uuid not in conversation_counts:
@@ -68,13 +73,16 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         
         # Log the conversation count for debugging
         logger.info(f"Conversation count for {uuid}: {current_count}/{MAX_EXCHANGES}")
-        
+
         # Store the user message in conversation history
         conversation_history[uuid].append({"role": "user", "content": message})
         
         # Check if we should analyze emotion and assign an animal type
         animal_to_return = None
-        if current_count == MAX_EXCHANGES:  # Changed from >= to == to only send animal once
+        isFifth = (current_count == MAX_EXCHANGES)
+        logger.info(f"Setting isFifth to {isFifth} for message {current_count}")
+        
+        if current_count == MAX_EXCHANGES:  # Animal assignment happens on MAX_EXCHANGES (4th message)
             # Log that we're doing animal assignment
             logger.info(f"Performing animal assignment for user {uuid} after {current_count} messages")
             
@@ -167,7 +175,7 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                     timeout=3.0
                 )
                 
-                # Reset conversation history but don't reset the counter - we want to continue counting
+                # Reset conversation history but don't reset the counter
                 conversation_history[uuid] = []
                 
                 # Store the AI response in conversation history
@@ -178,8 +186,7 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                     chat_data = {
                         "uuid": uuid,
                         "user_input": message,
-                        "chat_output": response_text,
-                        "points": points
+                        "chat_output": response_text
                     }
                     
                     await asyncio.wait_for(
@@ -193,11 +200,17 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                     # Continue even if saving fails
                 
                 # Return special animal assignment message with points
+                logger.info(f"Returning animal assignment response with isFifth=True")
+                
+                # Only include the animal in the response if the frontend provided an emotion
+                animal_to_return = detected_animal if emotion_provided else None
+                
                 return ChatResponse(
                     response=response_text,
                     emotion=detected_emotion,
-                    animal=detected_animal,
-                    points=points
+                    animal=animal_to_return,
+                    points=points,
+                    isFifth=True
                 )
                 
             except asyncio.TimeoutError:
@@ -273,8 +286,7 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
             chat_data = {
                 "uuid": uuid,
                 "user_input": message,
-                "chat_output": ai_response,
-                "points": points
+                "chat_output": ai_response
             }
             
             try:
@@ -284,8 +296,9 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                     ),
                     timeout=3.0
                 )
-            except Exception:
-                # Continue even if saving fails
+            except Exception as e:
+                # Log detailed error but continue
+                logger.error(f"Error saving chat: {str(e)}")
                 pass
                 
         except asyncio.TimeoutError:
@@ -293,10 +306,17 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
             pass
         
         # Return chat response with points and emotion (if animal has been assigned)
+        logger.info(f"Returning regular chat response with isFifth=False")
+        
+        # Only include the animal in the response if the frontend provided an emotion
+        animal_to_return = user_data["animal_type"] if emotion_provided and user_data["animal_type"] is not None else None
+        
         return ChatResponse(
             response=ai_response,
             emotion=user_data["animal_emotion"] if user_data["animal_type"] is not None else None,
-            points=points
+            animal=animal_to_return,
+            points=points,
+            isFifth=False  # Explicit setting
         )
             
     except HTTPException as he:

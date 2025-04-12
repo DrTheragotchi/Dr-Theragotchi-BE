@@ -31,12 +31,14 @@ class EmotionSelectionResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     uuid: str
+    emotion: Optional[EmotionType] = None
 
 class ChatResponse(BaseModel):
     response: str
     emotion: Optional[EmotionType] = None
     animal: Optional[CharacterType] = None
     points: Optional[int] = None
+    isFifth: bool = False
 
 class EmotionUpdateResponse(BaseModel):
     success: bool
