@@ -1,37 +1,42 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from routes import user, chat
+from routes import user, chat, onboarding
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI(
     title="Emogotchi API",
-    description="Backend API for Emogotchi application",
+    description="API for the Emogotchi virtual pet application",
     version="1.0.0"
 )
 
-# Configure CORS for Flutter mobile app
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins temporarily
+    allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Explicitly list all methods
+    allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
-    expose_headers=["*"],  # Exposes all headers to the client
-    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # Include routers
-app.include_router(user.router, tags=["user"])
-app.include_router(chat.router, tags=["chat"])
+app.include_router(onboarding.router, tags=["Onboarding"])
+app.include_router(user.router, tags=["User Management"])
+app.include_router(chat.router, tags=["Chat"])
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to Emogotchi API"}
-
-# Global exception handler to ensure clean JSON responses
+# Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={"detail": str(exc)}
-    ) 
+    )
+
+# Root endpoint
+@app.get("/")
+async def root():
+    return {"message": "Welcome to Emogotchi API"} 

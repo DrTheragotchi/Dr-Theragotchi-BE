@@ -1,28 +1,46 @@
-from fastapi import APIRouter, HTTPException, Query
-from models.schemas import ChatResponse
-from db import supabase
-from utils.llm import get_llm_response
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException
+from config.supabase_client import supabase
+from config.openai_config import get_ai_response
 
 router = APIRouter()
 
-@router.post("/chat", response_model=ChatResponse)
-async def create_chat(
-    message: str = Query(..., description="User message"),
-    user_uuid: str = Query(..., description="User UUID")
-):
+@router.post("/chat")
+async def chat_with_pet(uuid: str, message: str):
+    """
+    Chat with the AI pet.
+    
+    Args:
+        uuid (str): User's UUID
+        message (str): Message to send to the pet
+        
+    Returns:
+        dict: AI's response
+    """
     try:
-        # Get LLM response
-        reply = await get_llm_response(message)
+        # Get user data to access character type and mood
+        user_data = supabase.table("User").select("*").eq("uuid", uuid).execute()
         
-        # In a real implementation, you would save the chat to Supabase here
-        # data = {
-        #     "user_message": message,
-        #     "llm_response": reply,
-        #     "user_uuid": user_uuid
-        # }
-        # supabase.table("chats").insert(data).execute()
+        if not user_data.data:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        user = user_data.data[0]
         
-        return ChatResponse(reply=reply)
+        # Get AI response using the new configuration
+        ai_response = get_ai_response(
+            message=message,
+            character_type=user["character_type"],
+            current_mood=user["current_mood"]
+        )
+        
+        # Save chat message to Chat table
+        chat_data = {
+            "user_uuid": uuid,
+            "message": message,
+            "response": ai_response
+        }
+        supabase.table("Chat").insert(chat_data).execute()
+        
+        return {"reply": ai_response}
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
