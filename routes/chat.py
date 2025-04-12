@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from models.schemas import ChatRequest, ChatResponse
+from models.schemas import ChatResponse
 from db import supabase
 from utils.llm import get_llm_response
 from fastapi.responses import JSONResponse

@@ -37,7 +37,8 @@ class EmotionUpdateResponse(BaseModel):
 class UserResponse(BaseModel):
     uuid: UUID
     nickname: str
-    character_type: CharacterType
-    current_mood: EmotionType
+    character_type: Optional[CharacterType] = None
+    current_mood: Optional[EmotionType] = None
     level: int
-    created_at: str 
+    isNotified: bool
+    created_at: Optional[str] = None 

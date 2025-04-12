@@ -10,10 +10,11 @@ router = APIRouter()
 
 @router.post("/user")
 async def user_operations(
-    action: str = Query(..., description="Action to perform: create, update_emotion, or get"),
+    action: str = Query(..., description="Action to perform: create, update_emotion, get, or update_notification"),
     nickname: Optional[str] = Query(None, description="User nickname (required for create)"),
     emotion: Optional[EmotionType] = Query(None, description="Selected emotion (required for update_emotion)"),
-    uuid: Optional[str] = Query(None, description="User UUID (required for update_emotion and get)")
+    uuid: Optional[str] = Query(None, description="User UUID (required for update_emotion, get, and update_notification)"),
+    isNotified: Optional[bool] = Query(None, description="Notification status (required for update_notification)")
 ):
     try:
         if action == "create":
@@ -26,7 +27,8 @@ async def user_operations(
                 "nickname": nickname,
                 "character_type": None,
                 "current_mood": None,
-                "level": 1
+                "level": 1,
+                "isNotified": False
             }
             supabase.table("users").insert(data).execute()
             return OnboardingResponse(uuid=user_uuid, nickname=nickname)
@@ -70,8 +72,22 @@ async def user_operations(
                 raise HTTPException(status_code=404, detail="User not found")
             return response.data
             
+        elif action == "update_notification":
+            if not uuid or isNotified is None:
+                raise HTTPException(status_code=400, detail="UUID and isNotified are required for update_notification action")
+            
+            data = {
+                "isNotified": isNotified
+            }
+            response = supabase.table("users").update(data).eq("uuid", uuid).execute()
+            
+            if not response.data:
+                raise HTTPException(status_code=404, detail="User not found")
+            
+            return {"success": True, "isNotified": isNotified}
+            
         else:
-            raise HTTPException(status_code=400, detail="Invalid action. Must be create, update_emotion, or get")
+            raise HTTPException(status_code=400, detail="Invalid action. Must be create, update_emotion, get, or update_notification")
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
