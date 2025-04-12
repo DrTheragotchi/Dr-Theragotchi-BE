@@ -25,9 +25,9 @@ async def user_operations(
             data = {
                 "uuid": user_uuid,
                 "nickname": nickname,
-                "character_type": None,
-                "current_mood": None,
-                "level": 1,
+                "animal_type": None,
+                "animal_emotion": None,
+                "animal_level": 1,
                 "isNotified": False
             }
             supabase.table("users").insert(data).execute()
