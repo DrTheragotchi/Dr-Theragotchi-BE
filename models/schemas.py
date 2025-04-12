@@ -33,6 +33,8 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    emotion: Optional[EmotionType] = None
+    animal: Optional[CharacterType] = None
 
 class EmotionUpdateResponse(BaseModel):
     success: bool

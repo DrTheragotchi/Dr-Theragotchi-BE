@@ -62,11 +62,17 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         conversation_counts[uuid] += 1
         current_count = conversation_counts[uuid]
         
+        # Log the conversation count for debugging
+        logger.info(f"Conversation count for {uuid}: {current_count}/{MAX_EXCHANGES}")
+        
         # Store the user message in conversation history
         conversation_history[uuid].append({"role": "user", "content": message})
         
         # Check if we should analyze emotion and assign an animal type
-        if current_count >= MAX_EXCHANGES and not user_data["animal_type"]:
+        if current_count >= MAX_EXCHANGES:
+            # Log that we're doing animal assignment
+            logger.info(f"Performing animal assignment for user {uuid} after {current_count} messages")
+            
             # This is the animal and emotion assignment
             try:
                 # Send the admin prompt to analyze emotion and animal type
@@ -128,7 +134,9 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                 
                 # Return special animal assignment message
                 return ChatResponse(
-                    response=f"I've been thinking about our conversation. You seem to be feeling {detected_emotion}, and I think you're a lot like a {detected_animal}! *excited*"
+                    response=f"I've been thinking about our conversation. You seem to be feeling {detected_emotion}, and I think you're a lot like a {detected_animal}! *excited*",
+                    emotion=detected_emotion,
+                    animal=detected_animal
                 )
                 
             except asyncio.TimeoutError:
@@ -177,7 +185,10 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
             # Don't fail the request if saving fails
             pass
         
-        return ChatResponse(response=ai_response)
+        # Regular chat response without emotion and animal (they will be None by default)
+        return ChatResponse(
+            response=ai_response
+        )
             
     except HTTPException as he:
         raise he

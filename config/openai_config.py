@@ -20,7 +20,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Default therapist prompt template
 DEFAULT_PROMPT = """I want to use you as my therapist right now. From this point on, you're the counselor, and your role is to understand and heal my emotions as much as possible. The emotion I'm currently feeling is {emotion}, which is one of the following: HAPPY, SAD, ANGRY, ANXIOUS, CALM, EXCITED, SLEEPY, or NEUTRAL. 
 And based on the message saying "Why are you feeling {emotion}?" the user said "{message}".
-Use this information to guide your responses, but don't mention what I just explained—just act like the therapist right away."""
+Use this information to guide your responses, but don't mention what I just explained—just act like the therapist right away. And says like a human don't be repetitive."""
 
 def get_ai_response(
     message: str, 
@@ -91,7 +91,7 @@ Respond with ONLY the animal name in lowercase, nothing else."""
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages,
-            max_tokens=100 if is_admin_analysis else 50,  # More tokens for analysis
+            max_tokens=200 if is_admin_analysis else 150,  # Increased token limits for longer responses
             temperature=0.7,
             timeout=5  # 5 second timeout
         )
@@ -115,4 +115,4 @@ Respond with ONLY the animal name in lowercase, nothing else."""
                 character_type = "friendly pet"
             if not current_mood:
                 current_mood = "neutral"
-            return f"I understand you're feeling {current_mood}. How can I help you today?" 
+            return f"I understand you're feeling {current_mood}. How can I help you today?"     
