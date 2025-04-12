@@ -23,9 +23,9 @@ class OnboardingResponse(BaseModel):
     nickname: str
 
 class EmotionSelectionResponse(BaseModel):
-    character_type: CharacterType
-    current_mood: EmotionType
-    level: int
+    animal_type: CharacterType
+    animal_emotion: EmotionType
+    animal_level: int
 
 class ChatResponse(BaseModel):
     reply: str
@@ -37,8 +37,8 @@ class EmotionUpdateResponse(BaseModel):
 class UserResponse(BaseModel):
     uuid: UUID
     nickname: str
-    character_type: Optional[CharacterType] = None
-    current_mood: Optional[EmotionType] = None
-    level: int
-    isNotified: bool
+    animal_type: Optional[CharacterType] = None
+    animal_emotion: Optional[EmotionType] = None
+    animal_level: int
+    is_notified: bool
     created_at: Optional[str] = None 

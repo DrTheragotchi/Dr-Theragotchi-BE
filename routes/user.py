@@ -14,7 +14,7 @@ async def user_operations(
     nickname: Optional[str] = Query(None, description="User nickname (required for create)"),
     emotion: Optional[EmotionType] = Query(None, description="Selected emotion (required for update_emotion)"),
     uuid: Optional[str] = Query(None, description="User UUID (required for update_emotion, get, and update_notification)"),
-    isNotified: Optional[bool] = Query(None, description="Notification status (required for update_notification)")
+    is_notified: Optional[bool] = Query(None, description="Notification status (required for update_notification)")
 ):
     try:
         if action == "create":
@@ -28,7 +28,7 @@ async def user_operations(
                 "animal_type": None,
                 "animal_emotion": None,
                 "animal_level": 1,
-                "isNotified": False
+                "is_notified": False
             }
             supabase.table("users").insert(data).execute()
             return OnboardingResponse(uuid=user_uuid, nickname=nickname)
@@ -42,52 +42,57 @@ async def user_operations(
             if not user_response.data:
                 raise HTTPException(status_code=404, detail="User not found")
             
-            # If character_type is None, assign a random character
-            if not user_response.data[0].get("character_type"):
-                character_type = random.choice(list(CharacterType))
+            # If animal_type is None, assign a random character
+            if not user_response.data[0].get("animal_type"):
+                animal_type = random.choice(list(CharacterType))
                 data = {
-                    "current_mood": emotion,
-                    "character_type": character_type
+                    "animal_emotion": emotion,
+                    "animal_type": animal_type
                 }
                 supabase.table("users").update(data).eq("uuid", uuid).execute()
                 return EmotionSelectionResponse(
-                    character_type=character_type,
-                    current_mood=emotion,
-                    level=1
+                    animal_type=animal_type,
+                    animal_emotion=emotion,
+                    animal_level=1
                 )
             else:
-                # Just update the emotion
                 data = {
-                    "current_mood": emotion
+                    "animal_emotion": emotion
                 }
                 supabase.table("users").update(data).eq("uuid", uuid).execute()
                 return EmotionUpdateResponse(success=True, new_mood=emotion)
-                
+            
         elif action == "get":
             if not uuid:
                 raise HTTPException(status_code=400, detail="UUID is required for get action")
             
-            response = supabase.table("users").select("*").eq("uuid", uuid).execute()
-            if not response.data:
+            user_response = supabase.table("users").select("*").eq("uuid", uuid).execute()
+            if not user_response.data:
                 raise HTTPException(status_code=404, detail="User not found")
-            return response.data
+            
+            user_data = user_response.data[0]
+            return UserResponse(
+                uuid=user_data["uuid"],
+                nickname=user_data["nickname"],
+                animal_type=user_data["animal_type"],
+                animal_emotion=user_data["animal_emotion"],
+                animal_level=user_data["animal_level"],
+                is_notified=user_data["is_notified"],
+                created_at=user_data.get("created_at")
+            )
             
         elif action == "update_notification":
-            if not uuid or isNotified is None:
-                raise HTTPException(status_code=400, detail="UUID and isNotified are required for update_notification action")
+            if not uuid or is_notified is None:
+                raise HTTPException(status_code=400, detail="UUID and is_notified are required for update_notification action")
             
             data = {
-                "isNotified": isNotified
+                "is_notified": is_notified
             }
-            response = supabase.table("users").update(data).eq("uuid", uuid).execute()
-            
-            if not response.data:
-                raise HTTPException(status_code=404, detail="User not found")
-            
-            return {"success": True, "isNotified": isNotified}
+            supabase.table("users").update(data).eq("uuid", uuid).execute()
+            return {"success": True, "is_notified": is_notified}
             
         else:
-            raise HTTPException(status_code=400, detail="Invalid action. Must be create, update_emotion, get, or update_notification")
+            raise HTTPException(status_code=400, detail="Invalid action")
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
