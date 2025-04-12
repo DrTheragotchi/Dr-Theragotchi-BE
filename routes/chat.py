@@ -1,46 +1,31 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from models.schemas import ChatResponse
 from config.supabase_client import supabase
-from config.openai_config import get_ai_response
+import logging
+from fastapi.responses import JSONResponse
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.post("/chat")
-async def chat_with_pet(uuid: str, message: str):
-    """
-    Chat with the AI pet.
-    
-    Args:
-        uuid (str): User's UUID
-        message (str): Message to send to the pet
-        
-    Returns:
-        dict: AI's response
-    """
+@router.post("/chat", response_model=ChatResponse)
+async def chat_with_pet(
+    message: str = Query(..., description="User message"),
+    uuid: str = Query(..., description="User UUID")
+):
     try:
-        # Get user data to access character type and mood
-        user_data = supabase.table("User").select("*").eq("uuid", uuid).execute()
+        logger.info(f"Received chat message: {message} from user: {uuid}")
         
-        if not user_data.data:
+        # Get user data from Supabase
+        user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
+        if not user_response.data:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        # For testing, just echo back the message
+        return ChatResponse(response=message)
             
-        user = user_data.data[0]
-        
-        # Get AI response using the new configuration
-        ai_response = get_ai_response(
-            message=message,
-            character_type=user["character_type"],
-            current_mood=user["current_mood"]
-        )
-        
-        # Save chat message to Chat table
-        chat_data = {
-            "user_uuid": uuid,
-            "message": message,
-            "response": ai_response
-        }
-        supabase.table("Chat").insert(chat_data).execute()
-        
-        return {"reply": ai_response}
-        
     except Exception as e:
+        logger.error(f"Error in chat: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) 

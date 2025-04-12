@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from uuid import UUID
 from enum import Enum
+from datetime import datetime
 
 class CharacterType(str, Enum):
     TIGER = "tiger"
@@ -9,6 +10,9 @@ class CharacterType(str, Enum):
     HAMSTER = "hamster"
     PIG = "pig"
     DOG = "dog"
+    CAT = "cat"
+    RABBIT = "rabbit"
+    BIRD = "bird"
 
 class EmotionType(str, Enum):
     HAPPY = "happy"
@@ -17,6 +21,8 @@ class EmotionType(str, Enum):
     ANXIOUS = "anxious"
     CALM = "calm"
     EXCITED = "excited"
+    SLEEPY = "sleepy"
+    NEUTRAL = "neutral"
 
 class OnboardingResponse(BaseModel):
     uuid: UUID
@@ -28,7 +34,7 @@ class EmotionSelectionResponse(BaseModel):
     animal_level: int
 
 class ChatResponse(BaseModel):
-    reply: str
+    response: str
 
 class EmotionUpdateResponse(BaseModel):
     success: bool
@@ -41,4 +47,4 @@ class UserResponse(BaseModel):
     animal_emotion: Optional[EmotionType] = None
     animal_level: int
     is_notified: bool
-    created_at: Optional[str] = None 
+    created_at: Optional[datetime] = None 
