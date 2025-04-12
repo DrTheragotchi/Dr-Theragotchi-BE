@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 import random
 import re
+import uuid as uuid_lib
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -37,22 +38,22 @@ async def test_endpoint():
 async def chat_with_pet(request: Request, chat_request: ChatRequest):
     try:
         # Get user UUID
-        uuid = chat_request.uuid
+        user_uuid = chat_request.uuid
         message = chat_request.message
         emotion_provided = chat_request.emotion is not None
         
-        logger.info(f"Chat request from {uuid}: message='{message}', emotion_provided={emotion_provided}")
+        logger.info(f"Chat request from {user_uuid}: message='{message}', emotion_provided={emotion_provided}")
         
         # Initialize conversation count if it doesn't exist
-        if uuid not in conversation_counts:
-            conversation_counts[uuid] = 0
-            conversation_history[uuid] = []
+        if user_uuid not in conversation_counts:
+            conversation_counts[user_uuid] = 0
+            conversation_history[user_uuid] = []
         
         # Get user data from Supabase
         try:
             user_response = await asyncio.wait_for(
                 asyncio.to_thread(
-                    lambda: supabase.table("User").select("*").eq("uuid", uuid).execute()
+                    lambda: supabase.table("User").select("*").eq("uuid", user_uuid).execute()
                 ),
                 timeout=3.0
             )
@@ -68,14 +69,14 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         current_points = user_data.get("points", 0) or 0
         
         # Increment conversation count
-        conversation_counts[uuid] += 1
-        current_count = conversation_counts[uuid]
+        conversation_counts[user_uuid] += 1
+        current_count = conversation_counts[user_uuid]
         
         # Log the conversation count for debugging
-        logger.info(f"Conversation count for {uuid}: {current_count}/{MAX_EXCHANGES}")
+        logger.info(f"Conversation count for {user_uuid}: {current_count}/{MAX_EXCHANGES}")
 
         # Store the user message in conversation history
-        conversation_history[uuid].append({"role": "user", "content": message})
+        conversation_history[user_uuid].append({"role": "user", "content": message})
         
         # Check if we should analyze emotion and assign an animal type
         animal_to_return = None
@@ -84,7 +85,7 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         
         if current_count == MAX_EXCHANGES:  # Animal assignment happens on MAX_EXCHANGES (4th message)
             # Log that we're doing animal assignment
-            logger.info(f"Performing animal assignment for user {uuid} after {current_count} messages")
+            logger.info(f"Performing animal assignment for user {user_uuid} after {current_count} messages")
             
             # This is the animal and emotion assignment
             try:
@@ -96,7 +97,7 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                             character_type=None,
                             current_mood=None,
                             is_admin_analysis=True,
-                            conversation_history=conversation_history[uuid],
+                            conversation_history=conversation_history[user_uuid],
                             admin_prompt=ADMIN_PROMPT
                         )
                     ),
@@ -169,34 +170,50 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                                          "animal_emotion": detected_emotion,
                                          "points": new_points
                                      })
-                                     .eq("uuid", uuid)
+                                     .eq("uuid", user_uuid)
                                      .execute()
                     ),
                     timeout=3.0
                 )
                 
                 # Reset conversation history but don't reset the counter
-                conversation_history[uuid] = []
+                conversation_history[user_uuid] = []
                 
                 # Store the AI response in conversation history
-                conversation_history[uuid].append({"role": "assistant", "content": response_text})
+                conversation_history[user_uuid].append({"role": "assistant", "content": response_text})
                 
                 # Save chat message to Chat table
                 try:
+                    # Use upsert (update if exists, insert if not) to avoid duplicate key violation
+                    import random
+                    # Generate a random ID that will be consistent for this user's messages
+                    random_suffix = str(random.randint(1, 1000000))
+                    chat_id = f"{user_uuid}-{random_suffix}"
+                    
                     chat_data = {
-                        "uuid": uuid,
+                        "uuid": user_uuid,
                         "user_input": message,
                         "chat_output": response_text
                     }
                     
                     await asyncio.wait_for(
                         asyncio.to_thread(
-                            lambda: supabase.table("Chat").insert(chat_data).execute()
+                            lambda: supabase.table("Chat").upsert(chat_data).execute()
                         ),
                         timeout=3.0
                     )
                 except Exception as chat_error:
                     logger.error(f"Error saving chat: {str(chat_error)}")
+                    # Try a different approach if upsert fails
+                    try:
+                        await asyncio.to_thread(
+                            lambda: supabase.table("Chat").delete().eq("uuid", user_uuid).execute()
+                        )
+                        await asyncio.to_thread(
+                            lambda: supabase.table("Chat").insert(chat_data).execute()
+                        )
+                    except Exception as delete_error:
+                        logger.error(f"Error with delete-then-insert approach: {str(delete_error)}")
                     # Continue even if saving fails
                 
                 # Return special animal assignment message with points
@@ -249,10 +266,10 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                 
             # Update total points for the user
             new_points = current_points + points
-            logger.info(f"Awarding {points} points to user {uuid}. New total: {new_points}")
+            logger.info(f"Awarding {points} points to user {user_uuid}. New total: {new_points}")
             
             # Store the AI response in conversation history
-            conversation_history[uuid].append({"role": "assistant", "content": ai_response})
+            conversation_history[user_uuid].append({"role": "assistant", "content": ai_response})
             
         except asyncio.TimeoutError:
             raise HTTPException(status_code=504, detail="AI service timeout")
@@ -272,7 +289,7 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                 asyncio.to_thread(
                     lambda: supabase.table("User")
                                  .update(update_data)
-                                 .eq("uuid", uuid)
+                                 .eq("uuid", user_uuid)
                                  .execute()
                 ),
                 timeout=3.0
@@ -283,8 +300,14 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         
         # Save chat message to Chat table
         try:
+            # Use upsert (update if exists, insert if not) to avoid duplicate key violation
+            import random
+            # Generate a random ID that will be consistent for this user's messages
+            random_suffix = str(random.randint(1, 1000000))
+            chat_id = f"{user_uuid}-{random_suffix}"
+            
             chat_data = {
-                "uuid": uuid,
+                "uuid": user_uuid,
                 "user_input": message,
                 "chat_output": ai_response
             }
@@ -292,13 +315,23 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
             try:
                 await asyncio.wait_for(
                     asyncio.to_thread(
-                        lambda: supabase.table("Chat").insert(chat_data).execute()
+                        lambda: supabase.table("Chat").upsert(chat_data).execute()
                     ),
                     timeout=3.0
                 )
             except Exception as e:
                 # Log detailed error but continue
                 logger.error(f"Error saving chat: {str(e)}")
+                # Try a different approach if upsert fails
+                try:
+                    await asyncio.to_thread(
+                        lambda: supabase.table("Chat").delete().eq("uuid", user_uuid).execute()
+                    )
+                    await asyncio.to_thread(
+                        lambda: supabase.table("Chat").insert(chat_data).execute()
+                    )
+                except Exception as delete_error:
+                    logger.error(f"Error with delete-then-insert approach: {str(delete_error)}")
                 pass
                 
         except asyncio.TimeoutError:

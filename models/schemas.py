@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import Optional, List
 from uuid import UUID
 from enum import Enum
@@ -31,7 +31,13 @@ class EmotionSelectionResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     uuid: str
-    emotion: Optional[EmotionType] = None
+    emotion: Optional[str] = None
+    
+    @validator('emotion')
+    def validate_emotion(cls, v):
+        if v == "":
+            return None
+        return v
 
 class ChatResponse(BaseModel):
     response: str
