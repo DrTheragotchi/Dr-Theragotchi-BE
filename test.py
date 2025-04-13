@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 def test_openai():
     try:
         # Test parameters
-        test_message = "Hello! How are you?"
+        test_message = "Hello! How's everything going?"
         test_character = "dog"
         test_mood = "happy"
         
@@ -34,6 +34,6 @@ def test_openai():
 if __name__ == "__main__":
     success = test_openai()
     if success:
-        print("✅ OpenAI API test successful!")
+        print("✅ OpenAI API test cleared!")
     else:
         print("❌ OpenAI API test failed!") 
