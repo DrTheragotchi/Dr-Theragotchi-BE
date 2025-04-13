@@ -13,6 +13,10 @@ class OnboardingRequest(BaseModel):
     uuid: str
     nickname: str
 
+class UpdatePointsRequest(BaseModel):
+    uuid: str
+    points: int
+
 @router.post("/onboarding")
 async def create_user(request: OnboardingRequest):
     try:
@@ -63,6 +67,9 @@ async def assign_character(
         if not emotion or not user_uuid:
             raise HTTPException(status_code=400, detail="Emotion and UUID are required")
         
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        user_uuid = user_uuid.upper()
+        
         # Get the user from the database
         user_response = supabase.table("User").select("*").eq("uuid", user_uuid).execute()
         if not user_response.data:
@@ -95,6 +102,9 @@ async def assign_character(
 @router.get("/user/{uuid}")
 async def get_user(uuid: str):
     try:
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        uuid = uuid.upper()
+        
         user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
         if not user_response.data:
             raise HTTPException(status_code=404, detail="User not found")
@@ -117,6 +127,9 @@ async def get_user(uuid: str):
 @router.get("/user")
 async def get_user_by_query(uuid: str = Query(..., description="User UUID")):
     try:
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        uuid = uuid.upper()
+        
         user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
         if not user_response.data:
             raise HTTPException(status_code=404, detail="User not found")
@@ -158,6 +171,9 @@ async def update_emotion(
         if not emotion or not user_uuid:
             raise HTTPException(status_code=400, detail="Emotion and UUID are required")
         
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        user_uuid = user_uuid.upper()
+        
         # Get the user from the database
         user_response = supabase.table("User").select("*").eq("uuid", user_uuid).execute()
         if not user_response.data:
@@ -177,6 +193,9 @@ async def update_emotion(
 @router.delete("/user/{uuid}")
 async def delete_user(uuid: str):
     try:
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        uuid = uuid.upper()
+        
         # Delete the user
         supabase.table("User").delete().eq("uuid", uuid).execute()
         
@@ -184,6 +203,31 @@ async def delete_user(uuid: str):
         supabase.table("Chat").delete().eq("uuid", uuid).execute()
         
         return {"message": "User deleted successfully"}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/update/points")
+async def update_points(request: UpdatePointsRequest):
+    try:
+        if not request.uuid:
+            raise HTTPException(status_code=400, detail="UUID is required")
+        
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        uuid = request.uuid.upper()
+        
+        # Get the user from the database
+        user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Update the points
+        data = {
+            "points": request.points
+        }
+        supabase.table("User").update(data).eq("uuid", uuid).execute()
+        
+        return {"success": True, "points": request.points}
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
