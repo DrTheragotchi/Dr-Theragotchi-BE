@@ -1,359 +1,65 @@
-# Emogotchi Backend API
+# Dr. Teragotchi Backend
 
 <div align="center">
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI"/>
-  <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase"/>
+  <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="PostgreSQL"/>
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
   <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI"/>
-  <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter"/>
 </div>
 
 <div align="center">
-  <p>Backend service for the Emogotchi virtual pet application</p>
+  <p>Backend server powering the Dr. Teragotchi emotional wellbeing application</p>
 </div>
 
-## Overview
+## About the Backend
 
-Emogotchi is a virtual pet application that helps users track and manage their emotional wellbeing through interaction with an AI companion. The backend provides APIs for:
+This repository contains the backend API for Dr. Teragotchi, a virtual pet companion application that helps users track and improve their emotional wellbeing. The backend provides intelligence for emotional analysis, pet evolution, and diary generation through a series of carefully designed API endpoints.
 
-- Tracking user emotions with personalized responses
-- Assigning virtual pet characters based on user interaction
-- Facilitating natural language conversations with AI companions
-- Generating diary entries from conversations
-- Managing notification preferences
-- Pet feeding system with points-based progression
+## API Features
 
-## Getting Started
+- **Chat Processing**: Interprets user messages and generates contextually appropriate, natural-sounding pet responses
+- **Emotional Analysis**: Identifies user emotions from conversation patterns to personalize interactions
+- **Pet Assignment**: Algorithmically matches users with appropriate pet companions based on emotional patterns
+- **Points & Evolution**: Manages pet growth through feeding and interaction metrics
+- **Diary Generation**: Creates reflective diary entries from conversations without user effort
+- **User Management**: Handles profiles, settings, and persistent user data
 
-### Prerequisites
+## Architecture
 
-- Python 3.9+
-- Supabase account with database set up
-- Environment variables configured
+- **FastAPI Framework**: High-performance, async-compatible API endpoints
+- **Supabase Integration**: Robust database management for user data, chat history, and diary entries
+- **OpenAI Implementation**: Carefully engineered prompts for naturalistic conversation flow
+- **Stateful Conversation**: Context management across multiple user interactions
+- **Asynchronous Processing**: Non-blocking operations for responsive user experience
 
-### Installation
+## Technical Highlights
 
-1. Clone the repository:
-```bash
-git clone https://github.com/your-username/emogotchi-backend.git
-cd emogotchi-backend
-```
+- **Advanced Prompt Engineering**: Crafted custom prompts that balance personality with therapeutic value
+- **Conversation State Management**: Technical implementation to track conversation context
+- **Dynamic Response Generation**: Variable response lengths (brief to moderate) for natural conversation flow
+- **Efficient API Integration**: Optimized API calls to minimize latency and costs
+- **Structured Data Handling**: Robust schema design for user, pet, and interaction data
 
-2. Create and activate virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+## Core API Endpoints
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+- **/onboarding**: User registration and profile creation
+- **/character**: Pet personality assignment based on emotional analysis
+- **/chat**: Real-time conversation processing with emotional tracking
+- **/diary/generate**: Automatic diary creation from conversation history
+- **/user/update/points**: Pet feeding and growth system
+- **/user/update/level**: Pet evolution management
+- **/user/update/name**: User profile management
 
-4. Configure environment variables:
-```bash
-cp .env.example .env
-# Configure Supabase credentials and settings in .env
-```
+## Development Challenges
 
-5. Start the development server:
-```bash
-uvicorn main:app --reload
-```
+The backend implementation required solving several technical challenges:
+- Balancing response length for natural conversation
+- Managing OpenAI API rate limits while maintaining responsiveness
+- Creating a stateful experience in a stateless architecture
+- Implementing efficient context tracking for meaningful pet-user relationships
+- Optimizing database operations for real-time interactions
 
-The API will be available at `http://localhost:8000` with documentation at `http://localhost:8000/docs`
+## Hackathon Implementation
 
-## User Flow
+The backend was developed in under 24 hours during an intensive hackathon session, requiring efficient architecture decisions and focused API development. The entire system was built with scalability in mind, allowing for future feature expansion beyond the hackathon prototype.
 
-1. User registration with nickname
-2. Emotion selection
-3. Virtual pet assignment
-4. Conversations with AI companion
-5. Diary generation from conversations
-6. Emotion and pet evolution
-7. Pet feeding to gain points and advance levels
-
-## API Documentation
-
-### Onboarding
-- **POST `/onboarding`**
-  - Registers a new user with a nickname
-  - Returns UUID for future requests
-
-### Character Management
-- **POST `/character`**
-  - Assigns a character based on user emotion
-  - Returns character type and initial state
-
-### Chat System
-- **POST `/chat`**
-  - Facilitates conversation with the AI companion
-  - Provides therapeutic responses
-  - Awards points based on interaction
-  - Every 4th message triggers emotional analysis
-
-### Emotion Tracking
-- **PATCH `/emotion`**
-  - Updates the user's current emotion
-  - Affects the pet's appearance and behavior
-
-### Diary System
-- **GET `/diary/dates`**
-  - Retrieves available diary entry dates
-- **GET `/diary/{date}`**
-  - Gets detailed diary for specific date
-- **POST `/diary/generate`**
-  - Creates a new diary entry
-
-### User Management
-- **GET `/user/{uuid}`**
-  - Retrieves user profile
-- **DELETE `/user/{uuid}`**
-  - Removes user data and associated records
-
-### Feeding System
-- **GET `/user/update/points`**
-  - Updates user points when feeding the pet
-  - Request format: Query parameters `?uuid=user-uuid&points=150`
-  - Response: Empty JSON object with status 200
-- **POST `/user/update/points`**
-  - Alternative method for updating user points
-  - Request format: JSON body `{"uuid": "user-uuid", "points": 150}`
-  - Response: Empty JSON object with status 200
-
-### Level System
-- **GET `/user/update/level`**
-  - Updates the pet's level
-  - Affects pet evolution and appearance
-  - Request format: Query parameters `?uuid=user-uuid&level=2`
-  - Response: Empty JSON object with status 200
-- **POST `/user/update/level`** (Alternative)
-  - Updates the pet's level
-  - Request format: JSON body `{"uuid": "user-uuid", "animal_level": 2}`
-  - Response: Empty JSON object with status 200
-
-### Update Nickname
-- **GET `/user/update/name`**
-  - Updates the user's nickname
-  - Request format: Query parameters `?uuid=user-uuid&nickname=NewName`
-  - Response: Empty JSON object with status 200
-- **POST `/user/update/name`** (Alternative)
-  - Updates the user's nickname
-  - Request format: JSON body `{"uuid": "user-uuid", "nickname": "NewName"}`
-  - Response: Empty JSON object with status 200
-
-## Database Schema
-
-### User Table
-| Column | Type | Description |
-|--------|------|-------------|
-| uuid | UUID | Primary key |
-| nickname | String | User's display name |
-| animal_type | Enum | Pet character type |
-| animal_emotion | Enum | Current pet emotion |
-| animal_level | Integer | Pet's growth level |
-| points | Integer | User's accumulated points |
-| is_notified | Boolean | Notification preferences |
-| created_at | Timestamp | Account creation time |
-
-### Chat Table
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| uuid | UUID | User reference |
-| user_message | Text | Message from user |
-| ai_response | Text | Response from AI |
-| created_at | Timestamp | Message timestamp |
-
-### Diary Table
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| uuid | UUID | User reference |
-| date | Date | Entry date |
-| summary | Text | AI-generated summary |
-| emotion | String | Detected emotion |
-| created_at | Timestamp | Entry creation time |
-
-## Flutter Integration
-
-### Setting Up the Flutter Application
-
-1. Clone the Flutter repository:
-```bash
-git clone https://github.com/your-username/emogotchi-frontend.git
-cd emogotchi-frontend
-```
-
-2. Install dependencies:
-```bash
-flutter pub get
-```
-
-3. Configure backend URL:
-```dart
-// lib/config/api_config.dart
-// Android Emulator
-final String baseUrl = 'http://10.0.2.2:8000';
-// iOS Simulator
-// final String baseUrl = 'http://localhost:8000';
-// Production
-// final String baseUrl = 'https://your-production-server.com';
-```
-
-4. Run the application:
-```bash
-flutter run
-```
-
-### API Integration Examples
-
-#### User Registration
-```dart
-Future<String> registerUser(String nickname) async {
-  final url = Uri.parse('$baseUrl/onboarding');
-  final uuid = Uuid().v4();
-  
-  final response = await http.post(
-    url,
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode({'uuid': uuid, 'nickname': nickname}),
-  );
-  
-  if (response.statusCode == 200) {
-    final data = jsonDecode(response.body);
-    return data['uuid'];
-  } else {
-    throw Exception('Failed to register user');
-  }
-}
-```
-
-#### Pet Feeding
-```dart
-// Using GET method (recommended)
-Future<void> updateUserPoints(String uuid, int points) async {
-  final url = Uri.parse('$baseUrl/user/update/points?uuid=$uuid&points=$points');
-
-  try {
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      print("Points updated successfully");
-    } else {
-      throw Exception(
-        'Failed to update user points (status ${response.statusCode}): ${response.body}',
-      );
-    }
-  } catch (e) {
-    throw Exception('Error updating user points: $e');
-  }
-}
-
-// Alternative using POST method
-Future<void> updateUserPointsPost(String uuid, int points) async {
-  final url = Uri.parse('$baseUrl/user/update/points');
-
-  try {
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'uuid': uuid, 'points': points}),
-    );
-
-    if (response.statusCode == 200) {
-      print("Points updated successfully");
-    } else {
-      throw Exception(
-        'Failed to update user points (status ${response.statusCode}): ${response.body}',
-      );
-    }
-  } catch (e) {
-    throw Exception('Error updating user points: $e');
-  }
-}
-
-#### Update Pet Level
-```dart
-Future<void> updatePetLevel(String uuid, int level) async {
-  final url = Uri.parse('$baseUrl/user/update/level?uuid=$uuid&level=$level');
-
-  try {
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      print("Pet level updated successfully");
-    } else {
-      throw Exception(
-        'Failed to update pet level (status ${response.statusCode}): ${response.body}',
-      );
-    }
-  } catch (e) {
-    throw Exception('Error updating pet level: $e');
-  }
-}
-
-#### Update User Nickname
-```dart
-Future<void> updateUserName(String uuid, String nickname) async {
-  final url = Uri.parse('$baseUrl/user/update/name?uuid=$uuid&nickname=$nickname');
-
-  try {
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      print("Nickname updated successfully");
-    } else {
-      throw Exception(
-        'Failed to update nickname (status ${response.statusCode}): ${response.body}',
-      );
-    }
-  } catch (e) {
-    throw Exception('Error updating nickname: $e');
-  }
-}
-
-// Alternative using POST method
-Future<void> updateUserNamePost(String uuid, String nickname) async {
-  final url = Uri.parse('$baseUrl/user/update/name');
-
-  try {
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'uuid': uuid, 'nickname': nickname}),
-    );
-
-    if (response.statusCode == 200) {
-      print("Nickname updated successfully");
-    } else {
-      throw Exception(
-        'Failed to update nickname (status ${response.statusCode}): ${response.body}',
-      );
-    }
-  } catch (e) {
-    throw Exception('Error updating nickname: $e');
-  }
-}
-
-## Security & Performance
-
-- UUID-based authentication for all endpoints
-- Case-insensitive UUID handling
-- Rate limiting for API protection
-- CORS configured for secure cross-origin requests
-- Asynchronous processing for AI operations
-
-## Technologies
-
-- **FastAPI**: API framework
-- **Supabase**: Database and authentication
-- **OpenAI**: AI-powered conversation and diary generation
-- **Pydantic**: Data validation
-- **Uvicorn**: ASGI server
-- **Flutter**: Cross-platform frontend framework
-
----
-<div align="center">
-  <p>Built by Yutaka Yamaguchi, Wonjae Kim, Hyunwoo Jae, Jaegyoon Lee</p>
-</div>
