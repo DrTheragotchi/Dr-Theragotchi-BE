@@ -74,4 +74,5 @@ class DiaryGenerateResponse(BaseModel):
 
 class DiaryDateEntry(BaseModel):
     date: date
-    emotion: str 
+    emotion: str
+    summary: Optional[str] = None 

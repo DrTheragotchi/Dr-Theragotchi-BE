@@ -136,6 +136,19 @@ async def get_user_by_query(uuid: str = Query(..., description="User UUID")):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/user/", include_in_schema=True)
+async def get_user_no_params():
+    return JSONResponse(
+        status_code=400,
+        content={
+            "detail": "UUID parameter is required. Use either /user/{uuid} or /user?uuid={uuid}",
+            "examples": [
+                "/user/572A866E-F602-477C-95EC-BD9463107D4F",
+                "/user?uuid=572A866E-F602-477C-95EC-BD9463107D4F"
+            ]
+        }
+    )
+
 @router.patch("/emotion")
 async def update_emotion(
     emotion: EmotionType = Query(..., description="New emotion"),

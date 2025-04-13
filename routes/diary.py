@@ -8,6 +8,17 @@ from config.openai_config import client as openai_client
 import asyncio
 import os
 from supabase import create_client
+from pydantic import BaseModel
+
+# Define request models
+class DiaryGenerationRequest(BaseModel):
+    uuid: str
+
+class DiaryEntryCreate(BaseModel):
+    uuid: str
+    date: str
+    summary: str
+    emotion: str
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -145,6 +156,16 @@ Please write my diary entry based on these conversations and identify my dominan
     except Exception as e:
         logger.error(f"Error generating diary: {str(e)}")
         return "Failed to generate diary summary.", "neutral"
+
+
+@router.post("/generate", response_model=DiaryGenerateResponse)
+async def create_diary_entry_with_body(request: DiaryGenerationRequest):
+    """
+    Generate a diary entry for today based on the user's chat messages.
+    UUID is provided in the request body.
+    """
+    # Pass the request to the existing implementation
+    return await create_diary_entry(uuid=request.uuid)
 
 
 @router.post("/generate/{uuid}", response_model=DiaryGenerateResponse)
@@ -322,7 +343,7 @@ async def get_diary_dates(uuid: str = Path(..., description="User UUID")):
         # Fetch all diary entries for this user
         diary_response = await asyncio.to_thread(
             lambda: admin_supabase.table("Diary")
-                .select("date, emotion")
+                .select("date, emotion, summary")
                 .eq("uuid", uuid)
                 .order("date", desc=True)
                 .execute()
@@ -335,7 +356,62 @@ async def get_diary_dates(uuid: str = Path(..., description="User UUID")):
             entry_date = date.fromisoformat(entry["date"])
             diary_dates.append(DiaryDateEntry(
                 date=entry_date,
-                emotion=entry["emotion"]
+                emotion=entry["emotion"],
+                summary=entry.get("summary", None)
+            ))
+            
+        return diary_dates
+        
+    except HTTPException as he:
+        # Re-raise HTTP exceptions
+        raise he
+    except Exception as e:
+        logger.error(f"Error fetching diary dates: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch diary dates: {str(e)}")
+
+
+@router.get("/dates", response_model=List[DiaryDateEntry])
+async def get_diary_dates_by_query(uuid: str):
+    """
+    Get all diary dates for a user using a query parameter.
+    """
+    try:
+        # First, check if the user exists (try both User and users tables)
+        try:
+            user_response = await asyncio.to_thread(
+                lambda: admin_supabase.table("User").select("*").eq("uuid", uuid).execute()
+            )
+            if not user_response.data:
+                user_response = await asyncio.to_thread(
+                    lambda: admin_supabase.table("users").select("*").eq("uuid", uuid).execute()
+                )
+        except Exception as e:
+            logger.warning(f"Error with User table, trying users: {e}")
+            user_response = await asyncio.to_thread(
+                lambda: admin_supabase.table("users").select("*").eq("uuid", uuid).execute()
+            )
+        
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        # Fetch all diary entries for this user
+        diary_response = await asyncio.to_thread(
+            lambda: admin_supabase.table("Diary")
+                .select("date, emotion, summary")
+                .eq("uuid", uuid)
+                .order("date", desc=True)
+                .execute()
+        )
+        
+        # Convert to list of DiaryDateEntry
+        diary_dates = []
+        for entry in diary_response.data:
+            # Parse the date string to a date object
+            entry_date = date.fromisoformat(entry["date"])
+            diary_dates.append(DiaryDateEntry(
+                date=entry_date,
+                emotion=entry["emotion"],
+                summary=entry.get("summary", None)
             ))
             
         return diary_dates
@@ -389,6 +465,31 @@ async def create_simple_diary(uuid: str = Path(..., description="User UUID")):
         
         # Try raw SQL insert
         try:
+            result = await asyncio.to_thread(
+                lambda: admin_supabase.table("Diary").insert(diary_data, returning="minimal").execute()
+            )
+            return {"message": "Diary entry created", "result": result}
+        except Exception as e:
+            return {"error": str(e)}
+            
+    except Exception as e:
+        return {"error": str(e)}
+
+@router.post("/custom")
+async def create_custom_diary(diary_entry: DiaryEntryCreate):
+    """
+    Create a diary entry with custom date, summary, and emotion
+    """
+    try:
+        # Try raw SQL insert
+        try:
+            diary_data = {
+                "uuid": diary_entry.uuid,
+                "date": diary_entry.date,
+                "summary": diary_entry.summary,
+                "emotion": diary_entry.emotion
+            }
+            
             result = await asyncio.to_thread(
                 lambda: admin_supabase.table("Diary").insert(diary_data, returning="minimal").execute()
             )
