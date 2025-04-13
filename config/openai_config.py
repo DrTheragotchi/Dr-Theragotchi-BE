@@ -20,7 +20,9 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Default therapist prompt template
 DEFAULT_PROMPT = """I want to use you as my therapist right now. From this point on, you're the counselor, and your role is to understand and heal my emotions as much as possible. The emotion I'm currently feeling is {emotion}, which is one of the following: HAPPY, SAD, ANGRY, ANXIOUS, CALM, EXCITED, SLEEPY, or NEUTRAL. 
 And based on the message saying "Why are you feeling {emotion}?" the user said "{message}".
-Use this information to guide your responses, but don't mention what I just explained—just act like the therapist right away. And says like a human don't be repetitive."""
+Use this information to guide your responses, but don't mention what I just explained—just act like the therapist right away. And says like a human don't be repetitive.
+
+Vary your response length - sometimes respond with just 3-7 words, other times with 1-2 brief sentences"""
 
 # Scoring prompt for determining points
 SCORING_PROMPT = """User response: "{message}".

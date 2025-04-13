@@ -17,6 +17,14 @@ class UpdatePointsRequest(BaseModel):
     uuid: str
     points: int
 
+class UpdateLevelRequest(BaseModel):
+    uuid: str
+    animal_level: int
+
+class UpdateNameRequest(BaseModel):
+    uuid: str
+    nickname: str
+
 @router.post("/onboarding")
 async def create_user(request: OnboardingRequest):
     try:
@@ -207,32 +215,6 @@ async def delete_user(uuid: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/update/points")
-async def update_points(request: UpdatePointsRequest):
-    try:
-        if not request.uuid:
-            raise HTTPException(status_code=400, detail="UUID is required")
-        
-        # Standardize UUID to uppercase to avoid case sensitivity issues
-        uuid = request.uuid.upper()
-        
-        # Get the user from the database
-        user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
-        if not user_response.data:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Update the points
-        data = {
-            "points": request.points
-        }
-        supabase.table("User").update(data).eq("uuid", uuid).execute()
-        
-        # Return a 204 No Content response
-        return Response(status_code=204)
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @router.get("/user/update/points")
 async def update_points_get(
     uuid: str = Query(..., description="User UUID"),
@@ -286,4 +268,154 @@ async def update_points_post(request: UpdatePointsRequest):
         return {}
             
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/user/update/level")
+async def update_level_post(request: UpdateLevelRequest):
+    try:
+        if not request.uuid:
+            raise HTTPException(status_code=400, detail="UUID is required")
+        
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        uuid = request.uuid.upper()
+        
+        # Get the user from the database
+        user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Update the animal level
+        data = {
+            "animal_level": request.animal_level
+        }
+        supabase.table("User").update(data).eq("uuid", uuid).execute()
+        
+        # Return a 200 OK with empty content to match frontend expectations
+        return {}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/user/update/level")
+async def update_level_get(
+    uuid: str = Query(..., description="User UUID"),
+    level: int = Query(..., description="Level to update")
+):
+    try:
+        if not uuid:
+            raise HTTPException(status_code=400, detail="UUID is required")
+        
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        uuid = uuid.upper()
+        
+        # Get the user from the database
+        user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Update the animal level
+        data = {
+            "animal_level": level
+        }
+        supabase.table("User").update(data).eq("uuid", uuid).execute()
+        
+        # Return a 200 OK with empty content to match frontend expectations
+        return {}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/user/update/level/")
+async def update_level_post_with_slash(request: UpdateLevelRequest):
+    # Reuse the existing handler to avoid code duplication
+    return await update_level_post(request)
+
+@router.get("/user/update/level/")
+async def update_level_get_with_slash(
+    uuid: str = Query(..., description="User UUID"),
+    level: int = Query(..., description="Level to update")
+):
+    # Reuse the existing handler to avoid code duplication
+    return await update_level_get(uuid=uuid, level=level)
+
+@router.post("/user/update/points/")
+async def update_points_post_with_slash(request: UpdatePointsRequest):
+    # Reuse the existing handler to avoid code duplication
+    return await update_points_post(request)
+
+@router.get("/user/update/points/")
+async def update_points_get_with_slash(
+    uuid: str = Query(..., description="User UUID"),
+    points: int = Query(..., description="Points to update")
+):
+    # Reuse the existing handler to avoid code duplication
+    return await update_points_get(uuid=uuid, points=points)
+
+@router.post("/user/update/name")
+async def update_name_post(request: UpdateNameRequest):
+    try:
+        if not request.uuid:
+            raise HTTPException(status_code=400, detail="UUID is required")
+        
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        uuid = request.uuid.upper()
+        
+        # Get the user from the database
+        user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Update the nickname
+        data = {
+            "nickname": request.nickname
+        }
+        supabase.table("User").update(data).eq("uuid", uuid).execute()
+        
+        # Return a 200 OK with empty content to match frontend expectations
+        return {}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/user/update/name")
+async def update_name_get(
+    uuid: str = Query(..., description="User UUID"),
+    nickname: str = Query(..., description="New nickname to update")
+):
+    try:
+        if not uuid:
+            raise HTTPException(status_code=400, detail="UUID is required")
+        
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        uuid = uuid.upper()
+        
+        # Get the user from the database
+        user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Update the nickname
+        data = {
+            "nickname": nickname
+        }
+        supabase.table("User").update(data).eq("uuid", uuid).execute()
+        
+        # Return a 200 OK with empty content to match frontend expectations
+        return {}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/user/update/name/")
+async def update_name_post_with_slash(request: UpdateNameRequest):
+    # Reuse the existing handler to avoid code duplication
+    return await update_name_post(request)
+
+@router.get("/user/update/name/")
+async def update_name_get_with_slash(
+    uuid: str = Query(..., description="User UUID"),
+    nickname: str = Query(..., description="New nickname to update")
+):
+    # Reuse the existing handler to avoid code duplication
+    return await update_name_get(uuid=uuid, nickname=nickname) 
+    

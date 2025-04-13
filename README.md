@@ -112,10 +112,34 @@ The API will be available at `http://localhost:8000` with documentation at `http
   - Removes user data and associated records
 
 ### Feeding System
-- **POST `/user/update/points`**
+- **GET `/user/update/points`**
   - Updates user points when feeding the pet
-  - Enables pet growth and evolution
+  - Request format: Query parameters `?uuid=user-uuid&points=150`
+  - Response: Empty JSON object with status 200
+- **POST `/user/update/points`**
+  - Alternative method for updating user points
   - Request format: JSON body `{"uuid": "user-uuid", "points": 150}`
+  - Response: Empty JSON object with status 200
+
+### Level System
+- **GET `/user/update/level`**
+  - Updates the pet's level
+  - Affects pet evolution and appearance
+  - Request format: Query parameters `?uuid=user-uuid&level=2`
+  - Response: Empty JSON object with status 200
+- **POST `/user/update/level`** (Alternative)
+  - Updates the pet's level
+  - Request format: JSON body `{"uuid": "user-uuid", "animal_level": 2}`
+  - Response: Empty JSON object with status 200
+
+### Update Nickname
+- **GET `/user/update/name`**
+  - Updates the user's nickname
+  - Request format: Query parameters `?uuid=user-uuid&nickname=NewName`
+  - Response: Empty JSON object with status 200
+- **POST `/user/update/name`** (Alternative)
+  - Updates the user's nickname
+  - Request format: JSON body `{"uuid": "user-uuid", "nickname": "NewName"}`
   - Response: Empty JSON object with status 200
 
 ## Database Schema
@@ -207,7 +231,27 @@ Future<String> registerUser(String nickname) async {
 
 #### Pet Feeding
 ```dart
+// Using GET method (recommended)
 Future<void> updateUserPoints(String uuid, int points) async {
+  final url = Uri.parse('$baseUrl/user/update/points?uuid=$uuid&points=$points');
+
+  try {
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      print("Points updated successfully");
+    } else {
+      throw Exception(
+        'Failed to update user points (status ${response.statusCode}): ${response.body}',
+      );
+    }
+  } catch (e) {
+    throw Exception('Error updating user points: $e');
+  }
+}
+
+// Alternative using POST method
+Future<void> updateUserPointsPost(String uuid, int points) async {
   final url = Uri.parse('$baseUrl/user/update/points');
 
   try {
@@ -228,7 +272,69 @@ Future<void> updateUserPoints(String uuid, int points) async {
     throw Exception('Error updating user points: $e');
   }
 }
-```
+
+#### Update Pet Level
+```dart
+Future<void> updatePetLevel(String uuid, int level) async {
+  final url = Uri.parse('$baseUrl/user/update/level?uuid=$uuid&level=$level');
+
+  try {
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      print("Pet level updated successfully");
+    } else {
+      throw Exception(
+        'Failed to update pet level (status ${response.statusCode}): ${response.body}',
+      );
+    }
+  } catch (e) {
+    throw Exception('Error updating pet level: $e');
+  }
+}
+
+#### Update User Nickname
+```dart
+Future<void> updateUserName(String uuid, String nickname) async {
+  final url = Uri.parse('$baseUrl/user/update/name?uuid=$uuid&nickname=$nickname');
+
+  try {
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      print("Nickname updated successfully");
+    } else {
+      throw Exception(
+        'Failed to update nickname (status ${response.statusCode}): ${response.body}',
+      );
+    }
+  } catch (e) {
+    throw Exception('Error updating nickname: $e');
+  }
+}
+
+// Alternative using POST method
+Future<void> updateUserNamePost(String uuid, String nickname) async {
+  final url = Uri.parse('$baseUrl/user/update/name');
+
+  try {
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'uuid': uuid, 'nickname': nickname}),
+    );
+
+    if (response.statusCode == 200) {
+      print("Nickname updated successfully");
+    } else {
+      throw Exception(
+        'Failed to update nickname (status ${response.statusCode}): ${response.body}',
+      );
+    }
+  } catch (e) {
+    throw Exception('Error updating nickname: $e');
+  }
+}
 
 ## Security & Performance
 
@@ -249,5 +355,5 @@ Future<void> updateUserPoints(String uuid, int points) async {
 
 ---
 <div align="center">
-  <p>Built by Yutaka Yamaguchi, Wonjae Kim, Hyunwoo Jae, Jaegyoon Lee</p>
+  <p>Built by Yutaka Yamaguchi, Wonjae Kim, Dexter Jae, Jaegyoon Lee</p>
 </div>
