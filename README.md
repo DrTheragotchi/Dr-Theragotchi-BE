@@ -14,6 +14,8 @@
 
 ## Overview
 
+Hello!
+
 Emogotchi is a virtual pet application that helps users track and manage their emotional wellbeing through interaction with an AI companion. The backend provides APIs for:
 
 - Tracking user emotions with personalized responses
@@ -355,5 +357,5 @@ Future<void> updateUserNamePost(String uuid, String nickname) async {
 
 ---
 <div align="center">
-  <p>Built by Yutaka Yamaguchi, Wonjae Kim, Dexter Jae, Jaegyoon Lee</p>
+  <p>Built by Yutaka Yamaguchi, Wonjae Kim, Hyunwoo Jae, Jaegyoon Lee</p>
 </div>
