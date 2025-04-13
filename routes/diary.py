@@ -35,7 +35,6 @@ router = APIRouter(tags=["Diary"], prefix="/diary")
 async def generate_diary(chat_log: str) -> tuple[str, str]:
     """
     Generate a diary summary and emotion from chat logs.
-    This function will be replaced with actual implementation by the team.
     
     Args:
         chat_log: The chat logs for the day
@@ -44,36 +43,104 @@ async def generate_diary(chat_log: str) -> tuple[str, str]:
         A tuple of (summary, emotion)
     """
     try:
-        # Placeholder for the actual implementation
-        # Your teammate will provide the specific prompt
+        # Prompt templates - your teammate can modify these
+        system_prompt = """From now on, you are a writer who writes diaries on behalf of the user. Below is the conversation that took place over one day between the counselor (ChatGPT) and the user. 
+Based on this conversation, please write a diary (in a human-generated style), and by reading the diary, select the dominant emotion that governs the user among HAPPY, SAD, ANGRY, ANXIOUS, CALM, EXCITED, or NEUTRAL. 
+Return the result in the following format: 
+diary: {generate_diary}
+emotion: {emotion}"""
+
+        user_prompt = f"""Here are my conversations with my AI pet companion for today:
+
+{chat_log}
+
+Please write my diary entry based on these conversations and identify my dominant emotion."""
+
+        # Make the API call
         response = await asyncio.to_thread(
             lambda: openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a diary summarizer for a mental health app."},
-                    {"role": "user", "content": f"Summarize these chats into a diary entry and determine the overall emotion: {chat_log}"}
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
                 ],
                 max_tokens=500,
                 temperature=0.7
             )
         )
         
-        # Extract summary and emotion (in real implementation, you'd parse this properly)
+        # Extract summary and emotion
         ai_response = response.choices[0].message.content
+        logger.info(f"Raw AI response: {ai_response}")
         
-        # Placeholder parsing - this should be improved based on the actual prompt template
-        # Assuming format: "Summary: ... \nEmotion: ..."
-        parts = ai_response.split("\n")
-        summary = parts[0]
-        emotion = "neutral"  # Default
+        # Parsing the response
+        lines = ai_response.strip().split('\n')
         
-        # Try to extract emotion from response
-        for part in parts:
-            if part.lower().startswith("emotion:"):
-                emotion = part.split(":", 1)[1].strip().lower()
-                break
-                
-        return summary, emotion
+        # The new format is diary: {text} followed by emotion: {emotion}
+        summary_text = ""
+        emotion = "neutral"  # Default emotion
+        
+        # First see if it follows the exact format with "diary:" and "emotion:" prefixes
+        diary_part = ""
+        emotion_part = ""
+        
+        diary_start = ai_response.lower().find("diary:")
+        emotion_start = ai_response.lower().find("emotion:")
+        
+        if diary_start != -1 and emotion_start != -1:
+            # Extract parts between "diary:" and "emotion:"
+            diary_part = ai_response[diary_start + 6:emotion_start].strip()
+            emotion_part = ai_response[emotion_start + 8:].strip()
+            
+            summary_text = diary_part
+            emotion_text = emotion_part.lower()
+            
+            # Normalize emotion to one of the allowed values
+            if emotion_text in ["happy", "sad", "angry", "anxious", "calm", "excited", "neutral"]:
+                emotion = emotion_text
+            else:
+                # Try to map similar emotions
+                emotion_map = {
+                    "joy": "happy",
+                    "elated": "happy",
+                    "content": "happy",
+                    "unhappy": "sad",
+                    "depressed": "sad",
+                    "melancholy": "sad",
+                    "frustrated": "angry",
+                    "irritated": "angry",
+                    "mad": "angry",
+                    "worried": "anxious",
+                    "nervous": "anxious",
+                    "stressed": "anxious",
+                    "peaceful": "calm",
+                    "relaxed": "calm",
+                    "tranquil": "calm",
+                    "energetic": "excited",
+                    "enthusiastic": "excited",
+                    "thrilled": "excited"
+                }
+                emotion = emotion_map.get(emotion_text, "neutral")
+        else:
+            # Fallback to the old parsing if the new format isn't followed
+            summary_lines = []
+            for line in lines:
+                if line.lower().startswith("emotion:"):
+                    emotion_text = line.split(":", 1)[1].strip().lower()
+                    if emotion_text in ["happy", "sad", "angry", "anxious", "calm", "excited", "neutral"]:
+                        emotion = emotion_text
+                else:
+                    if line.strip():  # Only add non-empty lines
+                        summary_lines.append(line)
+            
+            summary_text = "\n".join(summary_lines).strip()
+        
+        # If we couldn't extract a summary, use the raw response
+        if not summary_text:
+            summary_text = ai_response
+            
+        logger.info(f"Generated diary with emotion: {emotion}")
+        return summary_text, emotion
         
     except Exception as e:
         logger.error(f"Error generating diary: {str(e)}")

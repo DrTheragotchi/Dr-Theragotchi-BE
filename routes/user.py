@@ -114,6 +114,28 @@ async def get_user(uuid: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/user")
+async def get_user_by_query(uuid: str = Query(..., description="User UUID")):
+    try:
+        user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user_data = user_response.data[0]
+        return UserResponse(
+            uuid=user_data["uuid"],
+            nickname=user_data["nickname"],
+            animal_type=user_data["animal_type"],
+            animal_emotion=user_data["animal_emotion"],
+            animal_level=user_data["animal_level"],
+            points=user_data.get("points", 0),
+            is_notified=user_data["is_notified"],
+            created_at=user_data.get("created_at")
+        )
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.patch("/emotion")
 async def update_emotion(
     emotion: EmotionType = Query(..., description="New emotion"),
