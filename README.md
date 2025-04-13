@@ -247,11 +247,7 @@ Future<void> updateUserPoints(String uuid, int points) async {
 - **Uvicorn**: ASGI server
 - **Flutter**: Cross-platform frontend framework
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ---
 <div align="center">
-  <p>Built by Yutaka Yamaguchi, Wonjae Kim, Dexter Jae, Jaegyoon Lee</p>
+  <p>Built by Yutaka Yamaguchi, Wonjae Kim, Hyunwoo Jae, Jaegyoon Lee</p>
 </div>
