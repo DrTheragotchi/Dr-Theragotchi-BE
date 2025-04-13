@@ -3,7 +3,7 @@ from models.schemas import ChatResponse, ChatRequest, EmotionType, CharacterType
 from config.supabase_client import supabase
 from config.openai_config import get_ai_response
 import logging
-import asyncio
+import asyncio  
 from typing import Optional
 import time
 from datetime import datetime
