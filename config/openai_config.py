@@ -26,18 +26,17 @@ Use this information to guide your responses, but don't mention what I just expl
 SCORING_PROMPT = """User response: "{message}".
 
 Admin instruction:
-Based on the user's response, generate your own therapeutic reply. Then, evaluate the user's emotional state on a scale from 0 to 5, where 0 indicates complete emotional distress and 5 indicates emotional stability.
+Based on the user's response, generate your own therapeutic reply. Then, evaluate the user's emotional state on a scale from 0 to 4, where 0 indicates complete emotional distress and 5 indicates emotional stability.
 
-0 = inappropriate or harmful content
-1 = very short/low effort response
-2 = basic response
-3 = thoughtful response
-4 = detailed, insightful response
-5 = exceptional, vulnerable, or highly meaningful response
+0 = Severely distressed / Harmful content
+1 = Anxious / Worried
+2 = Sad / Depressed
+3 = Angry / Frustrated / Irritable 
+4 = Positive / Hopeful / Grateful 
 
 Consider factors like emotional depth, vulnerability, thoughtfulness, and engagement.
 
-Format your output as follows: gpt: {your_response} points: {int}"""
+Format your output as follows: gpt: {{your_response}} points: {{int}}"""
 
 def get_ai_response(
     message: str, 
@@ -76,18 +75,22 @@ Based on the conversation history, you need to match the user with the most suit
 Choose from: tiger, penguin, hamster, pig, or dog.
 Respond with ONLY the animal name in lowercase, nothing else."""
         else:
-            # For regular conversations, use the therapist prompt
+            # For regular conversations, use the therapist prompt with scoring
             if not current_mood:
                 current_mood = "neutral"
                 
             if not character_type:
                 character_type = "friendly pet"
                 
-            # Substitute values into the default prompt
+            # Substitute values into the default prompt and add scoring
             system_prompt = DEFAULT_PROMPT.format(
                 emotion=current_mood.upper(),
                 message=message
             )
+            
+            # Add the scoring prompt to get points in the response
+            system_prompt += "\n\n" + SCORING_PROMPT.format(message=message)
+            logger.info(f"Using scoring prompt to get points in the response")
 
         # Create the messages for the API call
         if is_admin_analysis and conversation_history:
@@ -108,7 +111,7 @@ Respond with ONLY the animal name in lowercase, nothing else."""
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages,
-            max_tokens=200 if is_admin_analysis else 150,  # Increased token limits for longer responses
+            max_tokens=200 if is_admin_analysis else 150,  # Fixed the incomplete line
             temperature=0.7,
             timeout=5  # 5 second timeout
         )

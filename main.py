@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from routes import user, chat, onboarding
+from routes import user, chat, onboarding, diary
 import os
 from dotenv import load_dotenv
 
@@ -27,6 +27,7 @@ app.add_middleware(
 app.include_router(onboarding.router, tags=["Onboarding"])
 app.include_router(user.router, tags=["User Management"])
 app.include_router(chat.router, tags=["Chat"])
+app.include_router(diary.router)
 
 # Global exception handler
 @app.exception_handler(Exception)

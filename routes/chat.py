@@ -40,9 +40,33 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         # Get user UUID
         user_uuid = chat_request.uuid
         message = chat_request.message
-        emotion_provided = chat_request.emotion is not None
         
-        logger.info(f"Chat request from {user_uuid}: message='{message}', emotion_provided={emotion_provided}")
+        logger.info(f"Chat request from {user_uuid}: message='{message}'")
+        
+        # Process optional emotion field at the beginning of the function
+        emotion_provided = chat_request.emotion is not None
+        validated_emotion = None
+        
+        if emotion_provided:
+            # Validate the provided emotion against valid options
+            try:
+                # Convert to lowercase for case-insensitive comparison
+                emotion_str = chat_request.emotion.lower()
+                valid_emotions = ["happy", "sad", "angry", "anxious", "neutral"]
+                
+                if emotion_str in valid_emotions:
+                    validated_emotion = emotion_str
+                else:
+                    # Default to a valid emotion if the provided one isn't recognized
+                    validated_emotion = "neutral"
+                    logger.warning(f"Invalid emotion '{emotion_str}' provided, defaulting to 'neutral'")
+            except Exception as e:
+                logger.error(f"Error processing emotion: {str(e)}")
+                # Continue with emotion_provided = False
+                emotion_provided = False
+        
+        logger.info(f"Chat request from {user_uuid}: message='{message}', emotion_provided={emotion_provided}" +
+                   (f", emotion='{validated_emotion}'" if emotion_provided else ""))
         
         # Initialize conversation count if it doesn't exist
         if user_uuid not in conversation_counts:
@@ -80,7 +104,8 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         
         # Check if we should analyze emotion and assign an animal type
         animal_to_return = None
-        isFifth = (current_count == MAX_EXCHANGES)
+        isFifth = (current_count % MAX_EXCHANGES == 0)  # Will be true at 4, 8, 12, etc. (multiples of 4)
+        
         logger.info(f"Setting isFifth to {isFifth} for message {current_count}")
         
         if current_count == MAX_EXCHANGES:  # Animal assignment happens on MAX_EXCHANGES (4th message)
@@ -128,6 +153,10 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                     detected_emotion = "neutral"
                     detected_animal = "dog"
                 
+                # Use the validated emotion from the request if provided, otherwise use the detected one
+                final_emotion = validated_emotion if emotion_provided else detected_emotion
+                logger.info(f"Using emotion for animal assignment: {final_emotion} (user provided: {emotion_provided})")
+                
                 # Generate therapeutic response and points in the new format
                 from config.openai_config import SCORING_PROMPT
                 chat_response = await asyncio.wait_for(
@@ -135,19 +164,22 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                         lambda: get_ai_response(
                             message=message,
                             character_type=detected_animal,
-                            current_mood=detected_emotion
+                            current_mood=final_emotion  # Use the selected emotion
                         )
                     ),
                     timeout=5.0
                 )
                 
                 # Try to extract points from the response
-                points = 2  # Default
+                points = 2  # Default only if extraction fails completely
                 points_match = re.search(r'points:\s*(\d+)', chat_response, re.IGNORECASE)
                 logger.info(f"Points match: {points_match}")
                 if points_match:
                     points = int(points_match.group(1))
                     points = max(0, min(points, 5))  # Ensure within valid range
+                    logger.info(f"Extracted points from OpenAI response: {points}")
+                else:
+                    logger.warning(f"Failed to extract points from OpenAI response, using default: {points}")
                 
                 # Extract the actual response (everything before "points:")
                 response_text = chat_response
@@ -168,7 +200,7 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                         lambda: supabase.table("User")
                                      .update({
                                          "animal_type": detected_animal,
-                                         "animal_emotion": detected_emotion,
+                                         "animal_emotion": final_emotion,  # Use the selected emotion
                                          "points": new_points
                                      })
                                      .eq("uuid", user_uuid)
@@ -225,7 +257,7 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
                 
                 return ChatResponse(
                     response=response_text,
-                    emotion=detected_emotion,
+                    emotion=final_emotion,  # Use the selected emotion
                     animal=animal_to_return,
                     points=points,
                     isFifth=True
@@ -236,24 +268,31 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
         
         # Regular conversation flow
         try:
+            # Use the validated emotion from the request if provided, otherwise use the user's stored emotion
+            current_emotion_for_ai = validated_emotion if emotion_provided else user_data["animal_emotion"]
+            logger.info(f"Using emotion for AI response: {current_emotion_for_ai}")
+            
             # Get response and points in a single call
             combined_response = await asyncio.wait_for(
                 asyncio.to_thread(
                     lambda: get_ai_response(
                         message=message,
                         character_type=user_data["animal_type"],
-                        current_mood=user_data["animal_emotion"]
+                        current_mood=current_emotion_for_ai  # Use the selected emotion
                     )
                 ),
                 timeout=5.0
             )
             
             # Try to extract points from the response
-            points = 2  # Default
+            points = 2  # Default only if extraction fails completely
             points_match = re.search(r'points:\s*(\d+)', combined_response, re.IGNORECASE)
             if points_match:
                 points = int(points_match.group(1))
                 points = max(0, min(points, 5))  # Ensure within valid range
+                logger.info(f"Extracted points from OpenAI response: {points}")
+            else:
+                logger.warning(f"Failed to extract points from OpenAI response, using default: {points}")
             
             # Extract the actual response (everything before "points:")
             ai_response = combined_response
@@ -284,7 +323,7 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
             if user_data["animal_type"] is not None:
                 # For simplicity, we'll keep using the existing emotion
                 # In a real app, you might analyze the user's message to determine a new emotion
-                update_data["animal_emotion"] = user_data["animal_emotion"]
+                update_data["animal_emotion"] = current_emotion_for_ai
             
             await asyncio.wait_for(
                 asyncio.to_thread(
@@ -339,18 +378,20 @@ async def chat_with_pet(request: Request, chat_request: ChatRequest):
             # Don't fail the request if saving fails
             pass
         
-        # Return chat response with points and emotion (if animal has been assigned)
-        logger.info(f"Returning regular chat response with isFifth=False")
-        
         # Only include the animal in the response if the frontend provided an emotion
         animal_to_return = user_data["animal_type"] if emotion_provided and user_data["animal_type"] is not None else None
         
+        # Use the validated emotion from the request if provided
+        # Otherwise fall back to the user's stored emotion from DB
+        response_emotion = validated_emotion if emotion_provided else user_data["animal_emotion"]
+        logger.info(f"Using emotion for response: {response_emotion}")
+        
         return ChatResponse(
             response=ai_response,
-            emotion=user_data["animal_emotion"] if user_data["animal_type"] is not None else None,
+            emotion=response_emotion,
             animal=animal_to_return,
             points=points,
-            isFifth=False  # Explicit setting
+            isFifth=isFifth
         )
             
     except HTTPException as he:

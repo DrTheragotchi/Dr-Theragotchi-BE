@@ -2,7 +2,7 @@ from pydantic import BaseModel, validator
 from typing import Optional, List
 from uuid import UUID
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, date
 
 class CharacterType(str, Enum):
     TIGER = "tiger"
@@ -58,4 +58,20 @@ class UserResponse(BaseModel):
     animal_level: int
     points: Optional[int] = 0
     is_notified: bool
-    created_at: Optional[datetime] = None 
+    created_at: Optional[datetime] = None
+
+# Diary related models
+class DiaryEntry(BaseModel):
+    date: date
+    summary: str
+    emotion: str
+    
+class DiaryGenerateResponse(BaseModel):
+    message: str
+    date: date
+    summary: str
+    emotion: str
+
+class DiaryDateEntry(BaseModel):
+    date: date
+    emotion: str 
