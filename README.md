@@ -14,8 +14,6 @@
 
 ## Overview
 
-Hello!
-
 Emogotchi is a virtual pet application that helps users track and manage their emotional wellbeing through interaction with an AI companion. The backend provides APIs for:
 
 - Tracking user emotions with personalized responses
