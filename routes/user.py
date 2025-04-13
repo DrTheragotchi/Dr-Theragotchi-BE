@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Body
 from models.schemas import UserResponse, OnboardingResponse, EmotionSelectionResponse, EmotionUpdateResponse, CharacterType, EmotionType
 from config.supabase_client import supabase
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from typing import List, Optional
 import uuid
 import random
@@ -227,7 +227,63 @@ async def update_points(request: UpdatePointsRequest):
         }
         supabase.table("User").update(data).eq("uuid", uuid).execute()
         
-        return {"success": True, "points": request.points}
+        # Return a 204 No Content response
+        return Response(status_code=204)
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/user/update/points")
+async def update_points_get(
+    uuid: str = Query(..., description="User UUID"),
+    points: int = Query(..., description="Points to update")
+):
+    try:
+        if not uuid:
+            raise HTTPException(status_code=400, detail="UUID is required")
+        
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        uuid = uuid.upper()
+        
+        # Get the user from the database
+        user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Update the points
+        data = {
+            "points": points
+        }
+        supabase.table("User").update(data).eq("uuid", uuid).execute()
+        
+        # Return a 204 No Content response
+        return Response(status_code=204)
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/user/update/points")
+async def update_points_post(request: UpdatePointsRequest):
+    try:
+        if not request.uuid:
+            raise HTTPException(status_code=400, detail="UUID is required")
+        
+        # Standardize UUID to uppercase to avoid case sensitivity issues
+        uuid = request.uuid.upper()
+        
+        # Get the user from the database
+        user_response = supabase.table("User").select("*").eq("uuid", uuid).execute()
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Update the points
+        data = {
+            "points": request.points
+        }
+        supabase.table("User").update(data).eq("uuid", uuid).execute()
+        
+        # Return a 200 OK with empty content to match frontend expectations
+        return {}
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
