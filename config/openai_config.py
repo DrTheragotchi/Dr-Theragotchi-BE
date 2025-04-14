@@ -129,7 +129,7 @@ Respond with ONLY the animal name in lowercase, nothing else."""
         if is_admin_analysis:
             return "emotion: neutral, animal: dog"  # Default fallback analysis
         elif is_animal_selection:
-            return "dog"  # Default fallback animal
+            return "dog"  # Default fallback animalfd
         else:
             if not character_type:
                 character_type = "friendly pet"
